@@ -11,9 +11,18 @@ var privateKey = fs.readFileSync('fakekeys/privatekey.pem').toString(),
 
 var app = express();
 
-app.use(express.static(__dirname));
+var props = {};
 
-https.createServer({key: privateKey, cert: certificate}, app).listen(8000);
-http.createServer(app).listen(8001);
+app.use(express.static(__dirname));
+app.get('/g', function(req, res) {
+  res.send(props[req.query.k]);
+});
+app.get('/s', function(req, res) {
+  props[req.query.k] = req.query.v;
+  res.send(req.query.v);
+});
+
+https.createServer({key: privateKey, cert: certificate}, app).listen(443);
+//http.createServer(app).listen(80);
 
 console.log('running on https://localhost:8000 and http://localhost:8001');

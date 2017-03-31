@@ -13,8 +13,9 @@
             }
             .videoContainer video {
                 position: absolute;
-                width: 100%;
-                height: 100%;
+                width: 640px;/*100%;*/
+                height: 480px;/*100%;*/
+           /*     left:0px;top:0px;*/
             }
             .volume_bar {
                 position: absolute;
@@ -32,28 +33,48 @@
             <button type="submit">Create it!</button>
         </form>
         <div class="videoContainer">
-            <video id="localVideo" style="height: 150px;" oncontextmenu="return false;"></video>
+            <video id="localVideo" style="height: 800px;" oncontextmenu="return false;" volume="0"></video>
             <div id="localVolume" class="volume_bar"></div>
         </div>
+        <div id="none" style="display:none;"></div>
         <div id="remotes"></div>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
         <script src="simplewebrtc.bundle.js"></script>
         <script>
+            var isLaptop = document.cookie.indexOf("ignore")!=-1;
             // grab the room from the URL
             var room = location.search && location.search.split('?')[1];
 
+/*localVideo: {
+                autoplay: true,
+                mirror: true,
+                muted: true
+            }*/
+                /*receiveMedia: {
+                      offerToReceiveAudio: isLaptop*1,
+                      offerToReceiveVideo: isLaptop*1
+                  }*/
             // create our webrtc connection
             var webrtc = new SimpleWebRTC({
                 // the id/element dom element that will hold "our" video
-                localVideoEl: 'localVideo',
+                localVideoEl: 'localVideo',//isLaptop?'none':'localVideo',
                 // the id/element dom element that will hold remote videos
-                remoteVideosEl: '',
+                remoteVideosEl: 'remotes',//isLaptop?'remotes':'none',
                 // immediately ask for camera access
                 autoRequestMedia: true,
                 debug: false,
-                detectSpeakingEvents: true
+                detectSpeakingEvents: true,
+media: {
+video: {
+mandatory: {
+maxFrameRate: 10,
+maxWidth: 320,
+maxHeight: 240
+}
+},
+audio: false
+},
             });
-
             // when it's ready, join if we got a room from the URL
             webrtc.on('readyToCall', function () {
                 // you can name it anything
@@ -76,6 +97,8 @@
                 }
             });
             webrtc.on('videoAdded', function (video, peer) {
+                //    video.volume=0;
+             //   if(true || isLaptop){
                 console.log('video added', peer);
                 var remotes = document.getElementById('remotes');
                 if (remotes) {
@@ -93,6 +116,11 @@
                     d.appendChild(vol);
                     remotes.appendChild(d);
                 }
+           // }
+            //if(!isLaptop){
+             // webrtc.stopLocalVideo();
+              //webrtc.pauseVideo();
+            //}
             });
             webrtc.on('videoRemoved', function (video, peer) {
                 console.log('video removed ', peer);
@@ -160,6 +188,82 @@
                     
                 }
             });
+document.body.onkeypress = function(evt){
+  if(evt.keyCode >=48 && evt.keyCode <= 57){
+    send_cam(cam_list[evt.keyCode - 49]);
+  }
+}
+var cam_list = [];
+function get_cams(){
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+         var cams = xhttp.responseText
+         cam_list = JSON.parse(cams);
+      }
+  };
+  xhttp.open("GET", "/g?k=cams", true);
+  xhttp.send();
+}
+function send_cam(device_id){
+  var xhttp = new XMLHttpRequest();
+  xhttp.open("GET", "/s?k=cam&v="+device_id, true);
+  xhttp.send();
+}
+            setInterval(function(){
+              if(document.cookie.indexOf("ignore")==-1){
+                check_cams();
+                switch_cam();
+              } else {
+                get_cams();
+              }
+            }, 1000);
+var last_cam = "";
+function switch_cam(){
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+      if (this.readyState == 4 && this.status == 200) {
+         var cam = xhttp.responseText
+          if(cam.length > 10 && cam!=last_cam){
+          set_cam(cam);
+          last_cam=cam;
+          }
+      }
+  };
+  xhttp.open("GET", "/g?k=cam", true);
+  xhttp.send();
+}
+function set_cam(device_id){
+  webrtc.stopLocalVideo();      
+      webrtc.config.media.video = {
+        optional: [{sourceId: device_id}]
+      }
+      webrtc.startLocalVideo();
+}
+function check_cams(){
+    var audioDevices = [],
+    videoDevices = [];
+    navigator.mediaDevices.enumerateDevices().then(function (devices) {
+      for (var i = 0; i !== devices.length; ++i) {
+          var device = devices[i];
+          if (device.kind === 'audioinput') {
+              device.label = device.label || 'microphone ' + (audioDevices.length + 1);
+              audioDevices.push(device);
+          } else if (device.kind === 'videoinput') {
+              device.label = device.label || 'camera ' + (videoDevices.length + 1);
+              videoDevices.push(device);
+          }
+      }
+      var list = [];
+      for(var i = 0; i < videoDevices.length; i++){
+        list.push(videoDevices[i].deviceId);
+      }    
+      cams = JSON.stringify(list);
+      var xhttp = new XMLHttpRequest();
+      xhttp.open("GET", "/s?k=cams&v="+cams, true);
+      xhttp.send();
+    });
+}
         </script>
     </body>
 </html>
