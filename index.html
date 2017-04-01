@@ -236,12 +236,13 @@
                 }
             });*/
 
+var cam_list = [];
 document.body.onkeypress = function(evt){
-  if(evt.keyCode >=48 && evt.keyCode <= 57){
-    send_cam(cam_list[evt.keyCode - 49]);
+  var vl = evt.keyCode - 49;
+  if(evt.keyCode >=48 && evt.keyCode <= 57 && cam_list.length > vl && isLaptop){
+    send_cam(cam_list[vl]);
   }
 }
-var cam_list = [];
 function get_cams(){
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -254,6 +255,7 @@ function get_cams(){
   xhttp.send();
 }
 function send_cam(device_id){
+  console.log(device_id);
   var xhttp = new XMLHttpRequest();
   xhttp.open("GET", "/s?k=cam&v="+device_id, true);
   xhttp.send();
@@ -345,7 +347,9 @@ function check_cams(){
   }
   function onHeadingChange(event) {
     var heading = event.alpha;
-
+    if(event.beta < 10){
+      return;
+    }
     if (typeof event.webkitCompassHeading !== "undefined") {
       heading = event.webkitCompassHeading; //iOS non-standard
     }
