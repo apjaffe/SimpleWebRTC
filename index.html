@@ -64,6 +64,7 @@
         <div id="rose"><div id="arrow"></div></div>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
         <script src="simplewebrtc.bundle.js"></script>
+        <!--<script src="NoSleep.js"></script>-->
         <script>
             var isLaptop = document.cookie.indexOf("ignore")!=-1;
             // grab the room from the URL
@@ -76,8 +77,8 @@
             //2432 * 4320
             var mandate =  {
                       maxFrameRate:15,
-                      maxWidth: 90,
-                      maxHeight: 120,
+                      maxWidth: 90*2,
+                      maxHeight: 120*2,
                     };
             var video = isLaptop ? false : {
                      //width: {  max: 150 },
@@ -97,7 +98,7 @@
                 detectSpeakingEvents: false,
                 media: {
                   video: video,
-                  audio: false //!isLaptop,
+                  audio: false // !isLaptop,
                 },
                 localVideo: {
                     autoplay:true,
@@ -105,10 +106,10 @@
                     muted: true
                 }
             });
-            /*if(!isLaptop){
+            if(!isLaptop){
+             document.getElementById("localVideo").style.display="none"; 
               
-              webrtc.startLocalVideo();
-            }*/
+            }
             // when it's ready, join if we got a room from the URL
             webrtc.on('readyToCall', function () {
                 // you can name it anything
@@ -141,6 +142,8 @@
                   } else if (typeof rose.style.webkitTransform !== "undefined") {
                     rose.style.webkitTransform = "rotateZ(" + positionCurrent.hng + "deg)";
                   }
+                } else if(data.type=='refresh' && !isLaptop){
+                  document.location.reload();
                 }
             });
             webrtc.on('videoAdded', function (video, peer) {
@@ -399,7 +402,23 @@ function check_cams(){
     }
   }
  window.addEventListener("deviceorientation", onHeadingChange);
+      
+  function remote_refresh(){
+      webrtc.sendDirectlyToAll("refresh", "refresh","refresh");
+  }
+
+/*var noSleep = new NoSleep();
+
+function enableNoSleep() {
+  noSleep.enable();
+  document.removeEventListener('touchstart', enableNoSleep, false);
+}
+
+// Enable wake lock.
+// (must be wrapped in a user input event handler e.g. a mouse or touch handler)
+document.addEventListener('touchstart', enableNoSleep, false);*/
 
         </script>
+        <button onclick="remote_refresh()" style="position:absolute;right:50px;top:300px;">Refresh</button>
     </body>
 </html>
