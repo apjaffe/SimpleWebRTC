@@ -62,6 +62,8 @@
         <div id="remotes" class = "videoContainer"></div>
         <div id="position-hng"></div>
         <div id="rose"><div id="arrow"></div></div>
+        <button onclick="remote_refresh()" style="position:absolute;right:50px;top:300px;">Refresh</button>
+        <canvas width="60" height="80" style="position:absolute;right:500px;top:300px;transform:scale(6);" id="mycanvas"></canvas>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
         <script src="simplewebrtc.bundle.js"></script>
         <!--<script src="NoSleep.js"></script>-->
@@ -144,6 +146,10 @@
                   }
                 } else if(data.type=='refresh' && !isLaptop){
                   document.location.reload();
+                } else if(data.type=="bw" && isLaptop){
+                  read_bw(data.payload);
+                } else if(data.type=="cam" && !isLaptop){
+                  set_cam(data.payload);
                 }
             });
             webrtc.on('videoAdded', function (video, peer) {
@@ -259,6 +265,7 @@ function get_cams(){
 }
 function send_cam(device_id){
   console.log(device_id);
+  webrtc.sendDirectlyToAll("cam", "cam",device_id);
   var xhttp = new XMLHttpRequest();
   xhttp.open("GET", "/s?k=cam&v="+device_id, true);
   xhttp.send();
@@ -279,7 +286,6 @@ function switch_cam(){
          var cam = xhttp.responseText
           if(cam.length > 10 && cam!=last_cam){
           set_cam(cam);
-          last_cam=cam;
           }
       }
   };
@@ -287,12 +293,15 @@ function switch_cam(){
   xhttp.send();
 }
 function set_cam(device_id){
-  webrtc.stopLocalVideo();      
+  if(device_id!=last_cam){
+      last_cam=device_id;
+      webrtc.stopLocalVideo();      
       webrtc.config.media.video = {
         optional: [{sourceId: device_id}],
         mandatory: mandate
       }
       webrtc.startLocalVideo();
+  }
 }
 function check_cams(){
     var audioDevices = [],
@@ -406,6 +415,108 @@ function check_cams(){
   function remote_refresh(){
       webrtc.sendDirectlyToAll("refresh", "refresh","refresh");
   }
+  var WID=60;
+  var HEI=80;
+  var canvas = document.getElementById("mycanvas");
+  var ctx = canvas.getContext("2d");
+  setInterval(function(){
+   if(!isLaptop){
+    ctx.drawImage(localVideo,0,0,WID,HEI);
+    send_bw();
+   }
+  },100);
+  function fresh_data(){
+    return {data:[], spot:0, val:0};
+  }
+  function add_data(obj, dt){
+      obj.val *= 2;
+      obj.val += dt;
+      obj.spot++;
+      if(obj.spot == 8){
+        obj.data.push(String.fromCharCode(obj.val));
+        obj.spot=0;
+        obj.val=0;
+      }
+  }
+  function read_data(obj){
+    if(obj.spot!=0){
+      while(obj.spot < 8){
+        obj.val *= 2;
+        obj.spot++;
+      }
+      obj.data.push(String.fromCharCode(obj.val));
+    }
+    return obj.data.join("");
+  }
+  function send_bw(){
+    var imgd = ctx.getImageData(0,0,WID,HEI);
+    var pix = imgd.data;
+
+    //var data = [];
+    //var spot = 0;
+    //var val = 0;
+    var obj = fresh_data();
+    // Loop over each pixel and invert the color.
+    for (var i = 0, n = pix.length; i < n; i += 4) {
+      var gray = (pix[i] + pix[i+1] +pix[i+2])/3;
+      //var bw = gray > 127 ? 1 : 0;
+      //add_data(obj,bw);
+      //add_data(obj, gray>Math.random()*255);
+      add_data(obj, gray > 127);
+      add_data(obj, (gray % 127) > 63);
+      //add_data(obj,pix[i+1]>Math.random()*255);
+      //add_data(obj,pix[i+2]>Math.random()*255);
+      //val *= 2;
+      //val += bw;
+      //spot++;
+      //if(spot == 8){
+      //  data.push(String.fromCharCode(val));
+      //  spot=0;
+      //  val=0;
+      //}
+    }
+    /*if(spot!=0){
+      while(spot < 8){
+        val *= 2;
+        spot++;
+      }
+      data.push(String.fromCharCode(val));
+    }
+    webrtc.sendDirectlyToAll("bw", "bw",data.join(""));*/
+    webrtc.sendDirectlyToAll("bw", "bw",read_data(obj));
+
+  }
+  function read_bw(payload){
+    ctx.fillRect(0,0,WID,HEI)
+    var imgd = ctx.getImageData(0,0,WID,HEI);
+    var pix = imgd.data;
+    var data = [];
+    for(var i = 0; i < payload.length; i++){
+      var val = payload.charCodeAt(i);
+      var start = data.length;
+      for(var k = 0; k < 8; k++){
+        data[start + 7 - k] = val % 2;
+        val = Math.floor(val / 2);
+      }
+    }
+    var i = 0;
+    for(var y = 0; y < HEI; y++){
+      for(var x = 0; x < WID; x++){
+        //ctx.fillStyle = data[i] == 1 ? '#fff' :'#000';
+        //ctx.fillRect(x,y,1,1);
+        var spec =  data[i*2]*0.66 + data[i*2+1]*0.33;
+        pix[i*4] = spec * 255;
+        pix[i*4+1] = spec * 255;
+        pix[i*4+2] = spec * 255;
+        //pix[i*4] = data[i*3] * 255;
+        //pix[i*4+1] = data[i*3+1] * 255;
+        //pix[i*4+2] = data[i*3+2] * 255;
+        //pix[i*4+3] = 255;
+        i++;
+      }
+    }
+    ctx.putImageData(imgd, 0, 0);
+  }
 
 /*var noSleep = new NoSleep();
 
@@ -419,6 +530,5 @@ function enableNoSleep() {
 document.addEventListener('touchstart', enableNoSleep, false);*/
 
         </script>
-        <button onclick="remote_refresh()" style="position:absolute;right:50px;top:300px;">Refresh</button>
     </body>
 </html>
