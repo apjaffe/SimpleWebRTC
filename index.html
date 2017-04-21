@@ -63,7 +63,7 @@
         <div id="position-hng"></div>
         <div id="rose"><div id="arrow"></div></div>
         <button onclick="remote_refresh()" style="position:absolute;right:50px;top:300px;">Refresh</button>
-        <canvas width="60" height="80" style="position:absolute;right:500px;top:300px;transform:scale(6);" id="mycanvas"></canvas>
+        <canvas width="45" height="60" style="position:absolute;right:500px;top:300px;transform:scale(6);" id="mycanvas"></canvas>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
         <script src="simplewebrtc.bundle.js"></script>
         <!--<script src="NoSleep.js"></script>-->
@@ -84,7 +84,7 @@
                     };
             var video = isLaptop ? false : {
                      //width: {  max: 150 },
-                     //height: { max: 150 },
+                     //height: { m6x: 150 },
                      //frameRate: { max: 5 },
                      mandatory: mandate
                   };
@@ -110,6 +110,7 @@
             });
             if(!isLaptop){
              document.getElementById("localVideo").style.display="none"; 
+             document.getElementById("mycanvas").style.display="none"; 
               
             }
             // when it's ready, join if we got a room from the URL
@@ -415,8 +416,8 @@ function check_cams(){
   function remote_refresh(){
       webrtc.sendDirectlyToAll("refresh", "refresh","refresh");
   }
-  var WID=60;
-  var HEI=80;
+  var WID=45;
+  var HEI=60;
   var canvas = document.getElementById("mycanvas");
   var ctx = canvas.getContext("2d");
   setInterval(function(){
@@ -424,7 +425,7 @@ function check_cams(){
     ctx.drawImage(localVideo,0,0,WID,HEI);
     send_bw();
    }
-  },100);
+  },200);
   function fresh_data(){
     return {data:[], spot:0, val:0};
   }
